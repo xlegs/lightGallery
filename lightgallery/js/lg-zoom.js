@@ -1,23 +1,3 @@
-/*! lg-zoom - v1.0.4 - 2016-12-20
-* http://sachinchoolur.github.io/lightGallery
-* Copyright (c) 2016 Sachin N; Licensed GPLv3 */
-
-(function (root, factory) {
-  if (typeof define === 'function' && define.amd) {
-    // AMD. Register as an anonymous module unless amdModuleId is set
-    define(['jquery'], function (a0) {
-      return (factory(a0));
-    });
-  } else if (typeof exports === 'object') {
-    // Node. Does not work with strict CommonJS, but
-    // only CommonJS-like environments that support module.exports,
-    // like Node.
-    module.exports = factory(require('jquery'));
-  } else {
-    factory(jQuery);
-  }
-}(this, function ($) {
-
 (function() {
 
     'use strict';
@@ -51,6 +31,7 @@
 
             // Store the zoomable timeout value just to clear it while closing
             this.zoomabletimeout = false;
+            this.positionChanged = false;
 
             // Set the initial value center
             this.pageX = $(window).width() / 2;
@@ -116,8 +97,28 @@
             var offsetX = ($(window).width() - $image.prop('offsetWidth')) / 2;
             var offsetY = (($(window).height() - $image.prop('offsetHeight')) / 2) + $(window).scrollTop();
 
+            var originalX;
+            var originalY;
+
+            if(scaleVal === 1) {
+                _this.positionChanged = false;
+            }
+
+            if(_this.positionChanged) {
+
+                originalX = parseFloat($image.parent().attr('data-x'), 10) / (parseFloat($image.attr('data-scale'), 10) - 1);
+                originalY = parseFloat($image.parent().attr('data-y'), 10) / (parseFloat($image.attr('data-scale'), 10) - 1);
+
+
+                _this.pageX = originalX + offsetX;
+                _this.pageY = originalY + offsetY;
+
+                _this.positionChanged = false;
+            }
+
             _x = _this.pageX - offsetX;
             _y = _this.pageY - offsetY;
+            
 
             var x = (scaleVal - 1) * (_x);
             var y = (scaleVal - 1) * (_y);
@@ -506,6 +507,8 @@
                 _$el.css('transform', 'translate3d(' + distanceX + 'px, ' + distanceY + 'px, 0)');
             }
 
+            _this.positionChanged = true;
+
         }
     };
 
@@ -526,6 +529,3 @@
     $.fn.lightGallery.modules.zoom = Zoom;
 
 })();
-
-
-}));

@@ -94,6 +94,9 @@
 
         this.lgBusy = false;
 
+        // Direction of swipe/drag
+        this.swipeDirection = '';
+
         // Timeout function for hiding controls;
         this.hideBartimeout = false;
 
@@ -1022,36 +1025,70 @@
         }
     };
 
-    Plugin.prototype.setTranslate = function($el, xValue, yValue) {
-        // jQuery supports Automatic CSS prefixing since jQuery 1.8.0
+    Plugin.prototype.setTranslate = function($el, xValue, yValue, scaleX, scaleY) {
+
+        scaleX = scaleX || 1;
+        scaleY = scaleY || 1;
+
+        // jQuery supports Automatic CSS prefixing since version 1.8.0
         if (this.s.useLeft) {
             $el.css('left', xValue);
         } else {
             $el.css({
-                transform: 'translate3d(' + (xValue) + 'px, ' + yValue + 'px, 0px)'
+                transform: 'translate3d(' + (xValue) + 'px, ' + yValue + 'px, 0px) scale3d('+scaleX+', '+scaleY+', 1)'
             });
         }
     };
 
     Plugin.prototype.touchMove = function(startCoords, endCoords) {
 
-        var distance = endCoords - startCoords;
+        var distanceX = endCoords.pageX - startCoords.pageX;
+        var distanceY = endCoords.pageY - startCoords.pageY;
+        var allowSwipe = false;
 
-        if (Math.abs(distance) > 15) {
+        if(this.swipeDirection) {
+            allowSwipe = true;
+        } else {
+            if (Math.abs(distanceX) > 15) {
+                this.swipeDirection = 'horizontal';
+                allowSwipe = true;
+            } else if(Math.abs(distanceY) > 15) {
+                this.swipeDirection = 'vertical';
+                allowSwipe = true;
+            }
+        }
+
+        if(!allowSwipe) {
+            return;
+        }
+
+        if(this.swipeDirection === 'horizontal') {
+
             // reset opacity and transition duration
             this.$outer.addClass('lg-dragging');
 
             // move current slide
-            this.setTranslate(this.$slide.eq(this.index), distance, 0);
+            this.setTranslate(this.$slide.eq(this.index), distanceX, 0);
 
             // move next and prev slide with current slide
-            this.setTranslate($('.lg-prev-slide'), -this.$slide.eq(this.index).width() + distance, 0);
-            this.setTranslate($('.lg-next-slide'), this.$slide.eq(this.index).width() + distance, 0);
+            this.setTranslate($('.lg-prev-slide'), -this.$slide.eq(this.index).width() + distanceX, 0);
+            this.setTranslate($('.lg-next-slide'), this.$slide.eq(this.index).width() + distanceX, 0);
+        } else if(this.swipeDirection === 'vertical') {
+
+            this.$outer.addClass('lg-dragging');
+
+            var opacity = 1-(Math.abs(distanceY)/$(window).height());
+            $('.lg-backdrop').css('opacity', opacity);
+
+            var scale = 1-(Math.abs(distanceY)/($(window).width() * 2))
+            this.setTranslate(this.$slide.eq(this.index), 0, distanceY, scale, scale);
         }
+
     };
 
-    Plugin.prototype.touchEnd = function(distance) {
+    Plugin.prototype.touchEnd = function(endCoords, startCoords) {
         var _this = this;
+        var distance;
 
         // keep slide animation for any mode while dragg/swipe
         if (_this.s.mode !== 'lg-slide') {
@@ -1063,17 +1100,38 @@
         // set transition duration
         setTimeout(function() {
             _this.$outer.removeClass('lg-dragging');
-            if ((distance < 0) && (Math.abs(distance) > _this.s.swipeThreshold)) {
-                _this.goToNextSlide(true);
-            } else if ((distance > 0) && (Math.abs(distance) > _this.s.swipeThreshold)) {
-                _this.goToPrevSlide(true);
-            } else if (Math.abs(distance) < 5) {
+
+            var triggerClick = true;
+
+            if(_this.swipeDirection === 'horizontal') {
+                console.log(endCoords.pageX, startCoords.pageX)
+                distance = endCoords.pageX - startCoords.pageX;
+                var distanceAbs = Math.abs(endCoords.pageX - startCoords.pageX);
+                if ((distance < 0) && (distanceAbs > _this.s.swipeThreshold)) {
+                    _this.goToNextSlide(true);
+                    triggerClick = false;
+                } else if ((distance > 0) && (distanceAbs > _this.s.swipeThreshold)) {
+                    _this.goToPrevSlide(true);
+                    triggerClick = false;
+                }
+            } else if(_this.swipeDirection === 'vertical') {
+                distance = Math.abs(endCoords.pageY - startCoords.pageY);
+                if(distance > 100) {
+                    _this.destroy();
+                } else {
+                    $('.lg-backdrop').css('opacity', 1);
+                }
+            }
+
+            if (triggerClick && Math.abs(endCoords.pageX - startCoords.pageX) < 5) {
 
                 // Trigger click if distance is less than 5 pix
                 _this.$el.trigger('onSlideClick.lg');
             }
 
             _this.$slide.removeAttr('style');
+
+            _this.swipeDirection = '';
         });
 
         // remove slide class once drag/swipe is completed if mode is not slide
@@ -1083,12 +1141,13 @@
             }
         }, _this.s.speed + 100);
 
+
     };
 
     Plugin.prototype.enableSwipe = function() {
         var _this = this;
-        var startCoords = 0;
-        var endCoords = 0;
+        var startCoords = {};
+        var endCoords = {};
         var isMoved = false;
 
         if (_this.s.enableSwipe && _this.isTouch && _this.doCss()) {
@@ -1097,14 +1156,20 @@
                 if (!_this.$outer.hasClass('lg-zoomed') && !_this.lgBusy) {
                     e.preventDefault();
                     _this.manageSwipeClass();
-                    startCoords = e.originalEvent.targetTouches[0].pageX;
+                    startCoords = {
+                        pageX: e.originalEvent.targetTouches[0].pageX,
+                        pageY: e.originalEvent.targetTouches[0].pageY
+                    }
                 }
             });
 
             _this.$slide.on('touchmove.lg', function(e) {
                 if (!_this.$outer.hasClass('lg-zoomed')) {
                     e.preventDefault();
-                    endCoords = e.originalEvent.targetTouches[0].pageX;
+                    endCoords = {
+                        pageX: e.originalEvent.targetTouches[0].pageX,
+                        pageY: e.originalEvent.targetTouches[0].pageY
+                    }
                     _this.touchMove(startCoords, endCoords);
                     isMoved = true;
                 }
@@ -1114,7 +1179,7 @@
                 if (!_this.$outer.hasClass('lg-zoomed')) {
                     if (isMoved) {
                         isMoved = false;
-                        _this.touchEnd(endCoords - startCoords);
+                        _this.touchEnd(endCoords, startCoords);
                     } else {
                         _this.$el.trigger('onSlideClick.lg');
                     }
@@ -1126,8 +1191,8 @@
 
     Plugin.prototype.enableDrag = function() {
         var _this = this;
-        var startCoords = 0;
-        var endCoords = 0;
+        var startCoords = {};
+        var endCoords = {};
         var isDraging = false;
         var isMoved = false;
         if (_this.s.enableDrag && !_this.isTouch && _this.doCss()) {
@@ -1139,7 +1204,10 @@
 
                         if (!_this.lgBusy) {
                             _this.manageSwipeClass();
-                            startCoords = e.pageX;
+                            startCoords = {
+                                pageX: e.pageX,
+                                pageY: e.pageY
+                            }
                             isDraging = true;
 
                             // ** Fix for webkit cursor issue https://code.google.com/p/chromium/issues/detail?id=26723
@@ -1160,7 +1228,10 @@
             $(window).on('mousemove.lg', function(e) {
                 if (isDraging) {
                     isMoved = true;
-                    endCoords = e.pageX;
+                    endCoords = {
+                        pageX: e.pageX,
+                        pageY: e.pageY
+                    }
                     _this.touchMove(startCoords, endCoords);
                     _this.$el.trigger('onDragmove.lg');
                 }
@@ -1169,7 +1240,7 @@
             $(window).on('mouseup.lg', function(e) {
                 if (isMoved) {
                     isMoved = false;
-                    _this.touchEnd(endCoords - startCoords);
+                    _this.touchEnd(endCoords, startCoords);
                     _this.$el.trigger('onDragend.lg');
                 } else if ($(e.target).hasClass('lg-object') || $(e.target).hasClass('lg-video-play')) {
                     _this.$el.trigger('onSlideClick.lg');
