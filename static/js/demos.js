@@ -151,6 +151,9 @@ $(document).ready(function() {
         '</li>';
 
     $methods.lightGallery();
+    $('#methods1').lightGallery({
+        zoomFromImage: false
+    });
     $('#appendSlide').on('click', function() {
         $methods.append(slide);
         $methods.data('lightGallery').destroy(true);

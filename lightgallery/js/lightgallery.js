@@ -15,8 +15,13 @@
         width: '100%',
         addClass: '',
         startClass: 'lg-start-zoom',
-        backdropDuration: 150,
-        hideBarsDelay: 6000,
+        backdropDuration: 333,
+        startAnimationDuration: 333,
+        zoomFromImage: true,
+
+        // Set 0, if u don't want to hide the controls 
+        hideBarsDelay: 0,
+        showBarsAfter: 700,
 
         useLeft: false,
 
@@ -103,7 +108,12 @@
         // To determine browser supports for touch events;
         this.isTouch = ('ontouchstart' in document.documentElement);
 
-        // Disable hideControlOnEnd if sildeEndAnimation is true
+        // Disable startClass if zoomFromImage is true to avoid css conflicts 
+        if (this.s.zoomFromImage) {
+            this.s.startClass = '';
+        }
+
+        // Disable startClass if sildeEndAnimation is true
         if (this.s.slideEndAnimatoin) {
             this.s.hideControlOnEnd = false;
         }
@@ -134,6 +144,68 @@
         this.init();
 
         return this;
+    }
+
+    Plugin.prototype.getSize = function($el){
+
+        var lgSize = $el.data('lgSize');
+
+        if(!lgSize) {
+            return;
+        }
+
+        var size = lgSize.split('-');
+
+        var width = parseInt(size[0], 10);
+        var height = parseInt(size[1], 10);
+
+        var wWidth = $(window).width();
+        var wHeight = $(window).height();
+
+        var computedElWidth = width;
+        var computedElHeight = height;
+        var ratio;
+
+        if(width > wWidth) {
+            computedElWidth = wWidth;
+            ratio = computedElWidth / width;
+            computedElHeight = ratio * height;
+        } else if (height > wHeight){
+            computedElHeight = wHeight;
+            ratio = computedElHeight / height;
+            computedElWidth = ratio * width;
+        }
+
+        return {
+            width: computedElWidth,
+            height: computedElHeight
+        }
+    }
+
+    Plugin.prototype.getTransform = function($el){
+
+        var imageSize = this.getSize($el);
+
+        if(!imageSize) {
+            return;
+        }
+
+        var wWidth = $(window).width();
+        var wHeight = $(window).height();
+
+        var elWidth = $el.width();
+        var elHeight = $el.height();
+
+
+        var x =  ((wWidth - elWidth) / 2 ) - $el.offset().left - 15;
+        var y =  ((wHeight - elHeight) / 2 ) - $el.offset().top + $(window).scrollTop();
+
+        var scX = elWidth / imageSize.width;
+        var scY = elHeight / imageSize.height;
+        
+        var transform = 'translate3d('+(x *= -1)+'px, '+(y *= -1)+'px, 0) scale3d('+scX+', '+scY+', 1)';
+        
+        return transform;
     }
 
     Plugin.prototype.init = function() {
@@ -191,9 +263,11 @@
 
                 _this.index = _this.s.index || _this.$items.index(this);
 
+                var transform = _this.getTransform($(this));
+
                 // prevent accidental double execution
                 if (!$('body').hasClass('lg-on')) {
-                    _this.build(_this.index);
+                    _this.build(_this.index, transform);
                     $('body').addClass('lg-on');
                 }
             });
@@ -201,11 +275,18 @@
 
     };
 
-    Plugin.prototype.build = function(index) {
+    Plugin.prototype.build = function(index, transform) {
 
         var _this = this;
 
         _this.structure();
+
+        if(_this.s.zoomFromImage) {
+            this.$slide.eq(index).css('transform', transform);
+            setTimeout(function(){
+            _this.$slide.eq(index).removeAttr('style');
+            }, 100);
+        }
 
         // module constructor
         $.each($.fn.lightGallery.modules, function(key) {
@@ -244,20 +325,25 @@
         _this.$el.trigger('onAfterOpen.lg');
 
         // Hide controllers if mouse doesn't move for some period
-        _this.$outer.on('mousemove.lg click.lg touchstart.lg', function() {
-
+        setTimeout(function(){
             _this.$outer.removeClass('lg-hide-items');
-
-            clearTimeout(_this.hideBartimeout);
-
-            // Timeout will be cleared on each slide movement also
-            _this.hideBartimeout = setTimeout(function() {
-                _this.$outer.addClass('lg-hide-items');
-            }, _this.s.hideBarsDelay);
-
-        });
-
-        _this.$outer.trigger('mousemove.lg');
+            if(_this.s.hideBarsDelay > 0) {
+                _this.$outer.on('mousemove.lg click.lg touchstart.lg', function() {
+        
+                    _this.$outer.removeClass('lg-hide-items');
+        
+                    clearTimeout(_this.hideBartimeout);
+        
+                    // Timeout will be cleared on each slide movement also
+                    _this.hideBartimeout = setTimeout(function() {
+                        _this.$outer.addClass('lg-hide-items');
+                    }, _this.s.hideBarsDelay);
+        
+                });
+                _this.$outer.trigger('mousemove.lg');
+            }
+    
+        }, _this.s.showBarsAfter);
 
     };
 
@@ -289,7 +375,13 @@
             subHtmlCont = '<div class="lg-sub-html"></div>';
         }
 
-        template = '<div class="lg-outer ' + this.s.addClass + ' ' + this.s.startClass + '">' +
+        var addClasses = '';
+
+        if(_this.s.zoomFromImage) {
+            addClasses += 'lg-zoom-from-image '
+        }
+
+        template = '<div class="lg-outer lg-hide-items ' + this.s.addClass + ' ' + addClasses + ' ' + this.s.startClass + '">' +
             '<div class="lg" style="width:' + this.s.width + '; height:' + this.s.height + '">' +
             '<div class="lg-inner">' + list + '</div>' +
             '<div class="lg-toolbar lg-group">' +
@@ -354,9 +446,11 @@
             $('.lg-backdrop').addClass('in');
         });
 
-        setTimeout(function() {
-            _this.$outer.addClass('lg-visible');
-        }, this.s.backdropDuration);
+        if(!_this.s.zoomFromImage) {
+            setTimeout(function() {
+                _this.$outer.addClass('lg-visible');
+            }, this.s.backdropDuration);
+        }
 
         if (this.s.download) {
             this.$outer.find('.lg-toolbar').append('<a id="lg-download" target="_blank" download class="lg-download lg-icon"></a>');
@@ -575,6 +669,7 @@
         var _srcset;
         var _sizes;
         var _html;
+        var _dummyImgSrc;
         var getResponsiveSrc = function(srcItms) {
             var rsWidth = [];
             var rsSrc = [];
@@ -625,8 +720,17 @@
             }
 
             _html = _this.$items.eq(index).attr('data-html');
-            _src = _this.$items.eq(index).attr('href') || _this.$items.eq(index).attr('data-src');
 
+            if(!_this.lGalleryOn && _this.s.zoomFromImage) {
+                if (!_this.s.exThumbImage) {
+                    _dummyImgSrc = _this.$items.eq(index).find('img').attr('src');
+                } else {
+                    _dummyImgSrc = _this.$items.eq(index).attr(_this.s.exThumbImage);
+                }
+
+            }
+            _src = _this.$items.eq(index).attr('href') || _this.$items.eq(index).attr('data-src');
+            
             if (_this.$items.eq(index).attr('data-responsive')) {
                 var srcItms = _this.$items.eq(index).attr('data-responsive').split(',');
                 getResponsiveSrc(srcItms);
@@ -670,7 +774,25 @@
                 _this.$slide.eq(index).prepend('<div class="lg-video-cont "><div class="lg-video"></div></div>');
                 _this.$el.trigger('hasVideo.lg', [index, _src, _html]);
             } else {
-                _this.$slide.eq(index).prepend('<div class="lg-img-wrap"><img class="lg-object lg-image" src="' + _src + '" /></div>');
+                var dummyImgContent = '';
+                if(!_this.lGalleryOn && _this.s.zoomFromImage) {
+
+                    var imageSize = _this.getSize(_this.$items.eq(index));
+
+                    if(imageSize) {
+                        dummyImgContent = '<img style="max-width:'+imageSize.width+'px; width:'+imageSize.width+'px; max-height:'+imageSize.height+'px; height:'+imageSize.height+'px;" class="lg-dummy-img" src="' + _dummyImgSrc + '" />';
+                    }
+
+                }
+
+                if(_this.s.zoomFromImage && !_this.lGalleryOn) {
+                    _this.$slide.eq(index)
+                    .css('transition-duration', this.s.startAnimationDuration + 'ms')
+                    .addClass('lg-first-slide')
+                }
+
+                _this.$slide.eq(index)
+                .prepend('<div class="lg-img-wrap">'+dummyImgContent+'<img class="lg-object lg-image" src="' + _src + '" /></div>');
             }
 
             _this.$el.trigger('onAferAppendSlide.lg', [index]);
@@ -708,11 +830,15 @@
             if (delay && !$('body').hasClass('lg-from-hash')) {
                 _speed = delay;
             }
-
             setTimeout(function() {
                 _this.$slide.eq(index).addClass('lg-complete');
                 _this.$el.trigger('onSlideItemLoad.lg', [index, delay || 0]);
             }, _speed);
+
+            setTimeout(function() {
+                _this.$slide.eq(index).find('.lg-dummy-img').remove();
+                _this.$slide.eq(index).removeClass('lg-first-slide');
+            }, _speed + 300);
 
         });
 
@@ -888,7 +1014,7 @@
                 }, this.s.speed);
 
             } else {
-                _this.loadContent(index, true, _this.s.backdropDuration);
+                _this.loadContent(index, true, _this.s.startAnimationDuration + 10);
 
                 _this.lgBusy = false;
                 _this.$el.trigger('onAfterSlide.lg', [_prevIndex, index, fromTouch, fromThumb]);
@@ -1104,7 +1230,6 @@
             var triggerClick = true;
 
             if(_this.swipeDirection === 'horizontal') {
-                console.log(endCoords.pageX, startCoords.pageX)
                 distance = endCoords.pageX - startCoords.pageX;
                 var distanceAbs = Math.abs(endCoords.pageX - startCoords.pageX);
                 if ((distance < 0) && (distanceAbs > _this.s.swipeThreshold)) {
@@ -1114,23 +1239,23 @@
                     _this.goToPrevSlide(true);
                     triggerClick = false;
                 }
+                _this.$slide.removeAttr('style');
             } else if(_this.swipeDirection === 'vertical') {
                 distance = Math.abs(endCoords.pageY - startCoords.pageY);
+                _this.$slide.removeAttr('style');
                 if(distance > 100) {
                     _this.destroy();
                 } else {
                     $('.lg-backdrop').css('opacity', 1);
                 }
             }
-
+            
             if (triggerClick && Math.abs(endCoords.pageX - startCoords.pageX) < 5) {
-
+                
                 // Trigger click if distance is less than 5 pix
                 _this.$el.trigger('onSlideClick.lg');
             }
-
-            _this.$slide.removeAttr('style');
-
+            
             _this.swipeDirection = '';
         });
 
@@ -1339,6 +1464,12 @@
             $(window).scrollTop(_this.prevScrollTop);
         }
 
+        _this.$outer.addClass('lg-hide-items');
+
+        var transform = this.getTransform(_this.$items.eq(_this.index));
+        if(transform) {
+            _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
+        }
 
         /**
          * if d is false or undefined destroy will only close the gallery
@@ -1373,11 +1504,13 @@
         $(window).off('.lg');
         $('body').removeClass('lg-on lg-from-hash');
 
-        if (_this.$outer) {
+        if (_this.$outer && !_this.s.zoomFromImage) {
             _this.$outer.removeClass('lg-visible');
         }
 
         $('.lg-backdrop').removeClass('in');
+
+        var removeTimeout = this.s.zoomFromImage ? _this.s.startAnimationDuration : _this.s.backdropDuration;
 
         setTimeout(function() {
             if (_this.$outer) {
@@ -1390,7 +1523,7 @@
                 _this.$el.trigger('onCloseAfter.lg');
             }
 
-        }, _this.s.backdropDuration + 50);
+        }, removeTimeout + 10);
     };
 
     $.fn.lightGallery = function(options) {
