@@ -136,6 +136,7 @@
         };
 
         var callScale = function() {
+            _this.core.$outer.removeClass('lg-zoom-drag-transition');
             if (scale > 1) {
                 _this.core.$outer.addClass('lg-zoomed');
             } else {
@@ -243,19 +244,15 @@
         });
 
         // Drag option after zoom
-        if (!_this.core.isTouch) {
-            _this.zoomDrag();
-        }
+        _this.zoomDrag();
 
-        if (_this.core.isTouch) {
-            _this.zoomSwipe();
-        }
+        _this.zoomSwipe();
 
     };
 
     // Reset zoom effect
     Zoom.prototype.resetZoom = function() {
-        this.core.$outer.removeClass('lg-zoomed');
+        this.core.$outer.removeClass('lg-zoomed lg-zoom-drag-transition');
         this.core.$slide.find('.lg-img-wrap').removeAttr('style data-x data-y');
         this.core.$slide.find('.lg-image').removeAttr('style data-scale');
 
@@ -276,9 +273,15 @@
         // Allow Y direction drag
         var allowY = false;
 
+
+        var startTime;
+        var endTime;
+
         _this.core.$slide.on('touchstart.lg', function(e) {
 
             if (_this.core.$outer.hasClass('lg-zoomed')) {
+                _this.core.$outer.addClass('lg-zoom-drag-transition');
+                startTime = new Date();
                 var $image = _this.core.$slide.eq(_this.core.index).find('.lg-object');
 
                 allowY = $image.prop('offsetHeight') * $image.attr('data-scale') > _this.core.$outer.find('.lg').height();
@@ -345,8 +348,10 @@
             if (_this.core.$outer.hasClass('lg-zoomed')) {
                 if (isMoved) {
                     isMoved = false;
+                    endTime = new Date();
+                    var touchDuration = endTime - startTime;
                     _this.core.$outer.removeClass('lg-zoom-dragging');
-                    _this.touchendZoom(startCoords, endCoords, allowX, allowY);
+                    _this.touchendZoom(startCoords, endCoords, allowX, allowY, touchDuration);
 
                 }
             }
@@ -368,7 +373,13 @@
         // Allow Y direction drag
         var allowY = false;
 
+
+        var startTime;
+        var endTime;
+
         _this.core.$slide.on('mousedown.lg.zoom', function(e) {
+
+            startTime = new Date();
 
             // execute only on .lg-object
             var $image = _this.core.$slide.eq(_this.core.index).find('.lg-object');
@@ -390,7 +401,7 @@
                     _this.core.$outer.scrollLeft += 1;
                     _this.core.$outer.scrollLeft -= 1;
 
-                    _this.core.$outer.removeClass('lg-grab').addClass('lg-grabbing');
+                    _this.core.$outer.removeClass('lg-grab').addClass('lg-grabbing lg-zoom-drag-transition');
                 }
             }
         });
@@ -436,6 +447,7 @@
         $(window).on('mouseup.lg.zoom', function(e) {
 
             if (isDraging) {
+                endTime = new Date();
                 isDraging = false;
                 _this.core.$outer.removeClass('lg-zoom-dragging');
 
@@ -445,7 +457,8 @@
                         x: e.pageX,
                         y: e.pageY
                     };
-                    _this.touchendZoom(startCoords, endCoords, allowX, allowY);
+                    var touchDuration = endTime - startTime;
+                    _this.touchendZoom(startCoords, endCoords, allowX, allowY, touchDuration);
 
                 }
 
@@ -457,19 +470,32 @@
         });
     };
 
-    Zoom.prototype.touchendZoom = function(startCoords, endCoords, allowX, allowY) {
+    Zoom.prototype.touchendZoom = function(startCoords, endCoords, allowX, allowY, touchDuration) {
+
+        var distanceXnew = endCoords.x - startCoords.x;
+        var distanceYnew = endCoords.y - startCoords.y;
+
+        var speedX = Math.abs(distanceXnew)/touchDuration + 1;
+        var speedY = Math.abs(distanceYnew)/touchDuration + 1;
+
+        speedX > 2 ?  speedX+=1 : speedX;
+        speedY > 2 ?  speedY+=1 : speedY;
+
+        distanceXnew = distanceXnew * (speedX);
+        distanceYnew = distanceYnew * (speedY);
+
 
         var _this = this;
         var _$el = _this.core.$slide.eq(_this.core.index).find('.lg-img-wrap');
         var $image = _this.core.$slide.eq(_this.core.index).find('.lg-object');
-        var distanceX = (-Math.abs(_$el.attr('data-x'))) + (endCoords.x - startCoords.x);
-        var distanceY = (-Math.abs(_$el.attr('data-y'))) + (endCoords.y - startCoords.y);
+        var distanceX = (-Math.abs(_$el.attr('data-x'))) + (distanceXnew);
+        var distanceY = (-Math.abs(_$el.attr('data-y'))) + (distanceYnew);
         var minY = (_this.core.$outer.find('.lg').height() - $image.prop('offsetHeight')) / 2;
         var maxY = Math.abs(($image.prop('offsetHeight') * Math.abs($image.attr('data-scale'))) - _this.core.$outer.find('.lg').height() + minY);
         var minX = (_this.core.$outer.find('.lg').width() - $image.prop('offsetWidth')) / 2;
         var maxX = Math.abs(($image.prop('offsetWidth') * Math.abs($image.attr('data-scale'))) - _this.core.$outer.find('.lg').width() + minX);
 
-        if ((Math.abs(endCoords.x - startCoords.x) > 15) || (Math.abs(endCoords.y - startCoords.y) > 15)) {
+        if ((Math.abs(distanceXnew) > 15) || (Math.abs(distanceYnew) > 15)) {
             if (allowY) {
                 if (distanceY <= -maxY) {
                     distanceY = -maxY;
