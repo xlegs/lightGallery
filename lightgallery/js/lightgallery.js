@@ -72,7 +72,9 @@
 
         dynamic: false,
         dynamicEl: [],
-        galleryId: 1
+
+        galleryId: 1,
+        customSlideName: false
     };
 
     function Plugin(element, options) {
@@ -208,6 +210,26 @@
         return transform;
     }
 
+    Plugin.prototype.getIndexFromUrl = function(hash){
+
+        var hash = hash || window.location.hash;
+        var slideName = hash.split('&slide=')[1];
+        var _idx;
+
+        if(this.s.customSlideName) {
+            this.$items.each(function(index) {
+                if($(this).data('lgSlideName') === slideName) {
+                    _idx = index;
+                    return false;
+                }
+            });
+        } else {
+            _idx = parseInt(slideName, 10);
+        }
+
+        return isNaN(_idx) ? 0 : _idx;
+    }
+
     Plugin.prototype.init = function() {
 
         var _this = this;
@@ -221,7 +243,7 @@
         var _hash = window.location.hash;
         if (_hash.indexOf('lg=' + this.s.galleryId) > 0) {
 
-            _this.index = parseInt(_hash.split('&slide=')[1], 10);
+            _this.index = _this.getIndexFromUrl(_hash);
 
             $('body').addClass('lg-from-hash');
             if (!$('body').hasClass('lg-on')) {
@@ -1027,6 +1049,8 @@
             }
 
         }
+
+        _this.index = index;
 
     };
 
