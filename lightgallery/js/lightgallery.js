@@ -212,17 +212,23 @@
 
     Plugin.prototype.getIndexFromUrl = function(hash){
 
+        var _this = this;
         var hash = hash || window.location.hash;
         var slideName = hash.split('&slide=')[1];
         var _idx;
 
         if(this.s.customSlideName) {
-            this.$items.each(function(index) {
-                if($(this).data('lgSlideName') === slideName) {
+
+            var items = this.s.dynamic ? this.s.dynamicEl : this.$items;
+
+            $.each(items, function(index, item) {
+                var _slideName = _this.s.dynamic ? item.slideName : $(item).data('slideName');
+                if(_slideName === slideName) {
                     _idx = index;
                     return false;
                 }
             });
+
         } else {
             _idx = parseInt(slideName, 10);
         }
@@ -244,6 +250,7 @@
         if (_hash.indexOf('lg=' + this.s.galleryId) > 0) {
 
             _this.index = _this.getIndexFromUrl(_hash);
+            this.s.zoomFromImage = false;
 
             $('body').addClass('lg-from-hash');
             if (!$('body').hasClass('lg-on')) {
@@ -259,10 +266,10 @@
 
             _this.$el.trigger('onBeforeOpen.lg');
 
-            _this.index = _this.s.index || 0;
-
+            
             // prevent accidental double execution
             if (!$('body').hasClass('lg-on')) {
+                _this.index = _this.s.index || 0;
                 setTimeout(function() {
                     _this.build(_this.index);
                     $('body').addClass('lg-on');
@@ -306,7 +313,7 @@
         if(_this.s.zoomFromImage) {
             this.$slide.eq(index).css('transform', transform);
             setTimeout(function(){
-            _this.$slide.eq(index).removeAttr('style');
+                _this.$slide.eq(index).removeAttr('style');
             }, 100);
         }
 
@@ -797,7 +804,7 @@
                 _this.$el.trigger('hasVideo.lg', [index, _src, _html]);
             } else {
                 var dummyImgContent = '';
-                if(!_this.lGalleryOn && _this.s.zoomFromImage) {
+                if(!_this.lGalleryOn && _this.s.zoomFromImage && !_this.s.dynamic) {
 
                     var imageSize = _this.getSize(_this.$items.eq(index));
 
@@ -1489,10 +1496,12 @@
         }
 
         _this.$outer.addClass('lg-hide-items');
-
-        var transform = this.getTransform(_this.$items.eq(_this.index));
-        if(transform) {
-            _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
+        
+        if (!_this.s.dynamic) {
+            var transform = this.getTransform(_this.$items.eq(_this.index));
+            if(transform) {
+                _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
+            }
         }
 
         /**

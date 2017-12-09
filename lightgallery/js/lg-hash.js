@@ -27,7 +27,8 @@
             // Change hash value on after each slide transition
             _this.core.$el.on('onAfterSlide.lg.tm', function(event, prevIndex, index) {
 
-                var slideName = _this.core.s.customSlideName ? _this.core.$items.eq(index).data('lgSlideName') : index;
+                var slideName = _this.core.s.dynamic ? _this.core.s.dynamicEl[index].slideName : _this.core.$items.eq(index).data('slideName');
+                slideName = _this.core.s.customSlideName ? slideName : index;
                 if (history.replaceState) {
                     history.replaceState(null, null, window.location.pathname + '#lg=' + _this.core.s.galleryId + '&slide=' + slideName);
                 } else {
