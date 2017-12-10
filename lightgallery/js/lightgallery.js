@@ -19,7 +19,7 @@
         startAnimationDuration: 333,
 
         /**
-         * @desc - Zoom from image effect
+         * @desc - Zoom from image effect - Supports only images
          * Will be false if dynamic option is enabled or galleryID found in the URL
          * Setting startClass will be empty if zoomFromImage is true to avoid css conflicts.
          * 
@@ -1509,11 +1509,9 @@
 
         _this.$outer.addClass('lg-hide-items');
         
-        if (!_this.s.zoomFromImage) {
-            var transform = this.getTransform(_this.$items.eq(_this.index));
-            if(transform) {
-                _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
-            }
+        var transform = this.getTransform(_this.$items.eq(_this.index));
+        if (_this.s.zoomFromImage && transform) {
+            _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
         }
 
         /**
@@ -1549,13 +1547,13 @@
         $(window).off('.lg');
         $('body').removeClass('lg-on lg-from-hash');
 
-        if (_this.$outer && !_this.s.zoomFromImage) {
+        if (_this.$outer && !(_this.s.zoomFromImage && transform)) {
             _this.$outer.removeClass('lg-visible');
         }
 
         $('.lg-backdrop').removeClass('in');
 
-        var removeTimeout = this.s.zoomFromImage ? _this.s.startAnimationDuration : _this.s.backdropDuration;
+        var removeTimeout = (this.s.zoomFromImage && transform) ? _this.s.startAnimationDuration : _this.s.backdropDuration;
 
         setTimeout(function() {
             if (_this.$outer) {
