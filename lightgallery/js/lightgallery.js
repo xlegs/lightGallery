@@ -17,7 +17,14 @@
         startClass: 'lg-start-zoom',
         backdropDuration: 333,
         startAnimationDuration: 333,
-        zoomFromImage: true,
+
+        /**
+         * @desc - Zoom from image effect
+         * Will be false if dynamic option is enabled or galleryID found in the URL
+         * Setting startClass will be empty if zoomFromImage is true to avoid css conflicts.
+         * 
+         */
+        zoomFromImage: false,
 
         // Set 0, if u don't want to hide the controls 
         hideBarsDelay: 0,
@@ -110,11 +117,6 @@
         // To determine browser supports for touch events;
         this.isTouch = ('ontouchstart' in document.documentElement);
 
-        // Disable startClass if zoomFromImage is true to avoid css conflicts 
-        if (this.s.zoomFromImage) {
-            this.s.startClass = '';
-        }
-
         // Disable startClass if sildeEndAnimation is true
         if (this.s.slideEndAnimatoin) {
             this.s.hideControlOnEnd = false;
@@ -123,6 +125,8 @@
         // Gallery items
         if (this.s.dynamic) {
             this.$items = this.s.dynamicEl;
+
+            this.s.zoomFromImage = false;
         } else {
             if (this.s.selector === 'this') {
                 this.$items = this.$el;
@@ -135,6 +139,11 @@
             } else {
                 this.$items = this.$el.children();
             }
+        }
+
+        // Disable startClass if zoomFromImage is true to avoid css conflicts 
+        if (this.s.zoomFromImage) {
+            this.s.startClass = '';
         }
 
         // .lg-item
@@ -475,6 +484,7 @@
             $('.lg-backdrop').addClass('in');
         });
 
+        // lg-visible class resets gallery opacity to 1
         if(!_this.s.zoomFromImage) {
             setTimeout(function() {
                 _this.$outer.addClass('lg-visible');
@@ -750,6 +760,8 @@
 
             _html = _this.$items.eq(index).attr('data-html');
 
+            // Use the thumbnail as dummy image which will be resized to actual image size and 
+            // displayed on top of actual image
             if(!_this.lGalleryOn && _this.s.zoomFromImage) {
                 if (!_this.s.exThumbImage) {
                     _dummyImgSrc = _this.$items.eq(index).find('img').attr('src');
@@ -804,7 +816,7 @@
                 _this.$el.trigger('hasVideo.lg', [index, _src, _html]);
             } else {
                 var dummyImgContent = '';
-                if(!_this.lGalleryOn && _this.s.zoomFromImage && !_this.s.dynamic) {
+                if(!_this.lGalleryOn && _this.s.zoomFromImage) {
 
                     var imageSize = _this.getSize(_this.$items.eq(index));
 
@@ -1497,7 +1509,7 @@
 
         _this.$outer.addClass('lg-hide-items');
         
-        if (!_this.s.dynamic) {
+        if (!_this.s.zoomFromImage) {
             var transform = this.getTransform(_this.$items.eq(_this.index));
             if(transform) {
                 _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
