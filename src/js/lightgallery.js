@@ -319,7 +319,7 @@
 
         _this.structure();
 
-        if(_this.s.zoomFromImage) {
+        if(_this.s.zoomFromImage && transform) {
             this.$slide.eq(index).css('transform', transform);
             setTimeout(function(){
                 _this.$slide.eq(index).removeAttr('style');
@@ -708,7 +708,6 @@
         var _srcset;
         var _sizes;
         var _html;
-        var _dummyImgSrc;
         var getResponsiveSrc = function(srcItms) {
             var rsWidth = [];
             var rsSrc = [];
@@ -760,16 +759,6 @@
 
             _html = _this.$items.eq(index).attr('data-html');
 
-            // Use the thumbnail as dummy image which will be resized to actual image size and 
-            // displayed on top of actual image
-            if(!_this.lGalleryOn && _this.s.zoomFromImage) {
-                if (!_this.s.exThumbImage) {
-                    _dummyImgSrc = _this.$items.eq(index).find('img').attr('src');
-                } else {
-                    _dummyImgSrc = _this.$items.eq(index).attr(_this.s.exThumbImage);
-                }
-
-            }
             _src = _this.$items.eq(index).attr('href') || _this.$items.eq(index).attr('data-src');
             
             if (_this.$items.eq(index).attr('data-responsive')) {
@@ -815,25 +804,28 @@
                 _this.$slide.eq(index).prepend('<div class="lg-video-cont "><div class="lg-video"></div></div>');
                 _this.$el.trigger('hasVideo.lg', [index, _src, _html]);
             } else {
+
+                // Use the thumbnail as dummy image which will be resized to actual image size and 
+                // displayed on top of actual image
+                var _dummyImgSrc;
                 var dummyImgContent = '';
-                if(!_this.lGalleryOn && _this.s.zoomFromImage) {
-
-                    var imageSize = _this.getSize(_this.$items.eq(index));
-
-                    if(imageSize) {
-                        dummyImgContent = '<img style="max-width:'+imageSize.width+'px; width:'+imageSize.width+'px; max-height:'+imageSize.height+'px; height:'+imageSize.height+'px;" class="lg-dummy-img" src="' + _dummyImgSrc + '" />';
+                var imageSize = _this.getSize(_this.$items.eq(index));
+                if(!_this.lGalleryOn && _this.s.zoomFromImage && imageSize) {
+                    if (!_this.s.exThumbImage) {
+                        _dummyImgSrc = _this.$items.eq(index).find('img').attr('src');
+                    } else {
+                        _dummyImgSrc = _this.$items.eq(index).attr(_this.s.exThumbImage);
                     }
 
-                }
+                    dummyImgContent = '<img style="max-width:'+imageSize.width+'px; width:'+imageSize.width+'px; max-height:'+imageSize.height+'px; height:'+imageSize.height+'px;" class="lg-dummy-img" src="' + _dummyImgSrc + '" />';
 
-                if(_this.s.zoomFromImage && !_this.lGalleryOn) {
                     _this.$slide.eq(index)
                     .css('transition-duration', this.s.startAnimationDuration + 'ms')
                     .addClass('lg-first-slide')
                 }
 
                 _this.$slide.eq(index)
-                .prepend('<div class="lg-img-wrap">'+dummyImgContent+'<img class="lg-object lg-image" src="' + _src + '" /></div>');
+                .prepend('<div class="lg-img-wrap">' + dummyImgContent + '<img class="lg-object lg-image" src="' + _src + '" /></div>');
             }
 
             _this.$el.trigger('onAferAppendSlide.lg', [index]);
