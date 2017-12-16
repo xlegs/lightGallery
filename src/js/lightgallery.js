@@ -24,11 +24,14 @@
          * Setting startClass will be empty if zoomFromImage is true to avoid css conflicts.
          * 
          */
-        zoomFromImage: false,
+        zoomFromImage: true,
 
         // Set 0, if u don't want to hide the controls 
-        hideBarsDelay: 0,
+        hideBarsDelay: 3000,
         showBarsAfter: 700,
+
+        // If true sub-html will also be hidden along with controls and toolbar if hideBarDelay is more than 0
+        hideSubHtml: true,
 
         useLeft: false,
 
@@ -417,6 +420,10 @@
 
         if(_this.s.zoomFromImage) {
             addClasses += 'lg-zoom-from-image '
+        }
+
+        if(_this.s.hideSubHtml) {
+            addClasses += 'lg-hide-sub-html '
         }
 
         template = '<div class="lg-outer lg-hide-items ' + this.s.addClass + ' ' + addClasses + ' ' + this.s.startClass + '">' +
@@ -1499,13 +1506,15 @@
             $(window).scrollTop(_this.prevScrollTop);
         }
 
-        _this.$outer.addClass('lg-hide-items');
         
         var transform = this.getTransform(_this.$items.eq(_this.index));
         if (_this.s.zoomFromImage && transform) {
+            _this.$outer.addClass('lg-closing');
             _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
+        } else {
+            _this.$outer.addClass('lg-hide-items');
         }
-
+        
         /**
          * if d is false or undefined destroy will only close the gallery
          * plugins instance remains with the element
@@ -1545,7 +1554,8 @@
 
         $('.lg-backdrop').removeClass('in');
 
-        var removeTimeout = (this.s.zoomFromImage && transform) ? _this.s.startAnimationDuration : _this.s.backdropDuration;
+        var removeTimeout = (this.s.zoomFromImage && transform) ?
+            _this.s.startAnimationDuration + 200 : _this.s.backdropDuration;
 
         setTimeout(function() {
             if (_this.$outer) {

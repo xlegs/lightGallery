@@ -165,7 +165,7 @@
 }
 
 // for idle state
-.lg-toolbar, .lg-prev, .lg-next {
+.lg-toolbar, .lg-prev, .lg-next, .lg-sub-html {
     opacity: 1;
     @include transitionCustom(transform 0.35s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.35s cubic-bezier(0, 0, 0.25, 1) 0s, color 0.2s linear);
 }
@@ -184,6 +184,20 @@
     .lg-toolbar {
         opacity: 0;
         @include translate3d(0, -10px, 0);
+    }
+
+    &.lg-hide-sub-html {
+        .lg-sub-html {
+            opacity: 0;
+            @include translate3d(0, 20px, 0);
+        }
+    }
+}
+
+.lg-closing {
+    .lg-toolbar, .lg-prev, .lg-next, .lg-sub-html {
+        opacity: 0;
+        @include transitionCustom(transform 0.08 cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.08 cubic-bezier(0, 0, 0.25, 1) 0s, color 0.08 linear);
     }
 }
 
