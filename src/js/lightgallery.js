@@ -3,7 +3,7 @@
 
     var defaults = {
 
-        mode: 'lg-slide',
+        mode: 'lg-fade',
 
         // Ex : 'ease'
         cssEasing: 'ease',
@@ -24,7 +24,7 @@
          * Setting startClass will be empty if zoomFromImage is true to avoid css conflicts.
          * 
          */
-        zoomFromImage: true,
+        zoomFromImage: false,
 
         // Set 0, if u don't want to hide the controls 
         hideBarsDelay: 3000,
@@ -110,6 +110,8 @@
         this.lGalleryOn = false;
 
         this.lgBusy = false;
+
+        this.touchAction = '';
 
         // Direction of swipe/drag
         this.swipeDirection = '';
@@ -816,8 +818,11 @@
                 // displayed on top of actual image
                 var _dummyImgSrc;
                 var dummyImgContent = '';
-                var imageSize = _this.getSize(_this.$items.eq(index));
-                if(!_this.lGalleryOn && _this.s.zoomFromImage && imageSize) {
+                if(!_this.lGalleryOn && _this.s.zoomFromImage) {
+                    var imageSize = _this.getSize(_this.$items.eq(index));
+                    if(!imageSize) {
+                        return;
+                    }
                     if (!_this.s.exThumbImage) {
                         _dummyImgSrc = _this.$items.eq(index).find('img').attr('src');
                     } else {
@@ -1208,7 +1213,7 @@
         }
     };
 
-    Plugin.prototype.touchMove = function(startCoords, endCoords) {
+    Plugin.prototype.touchMove = function(startCoords, endCoords, e) {
 
         var distanceX = endCoords.pageX - startCoords.pageX;
         var distanceY = endCoords.pageY - startCoords.pageY;
@@ -1242,7 +1247,6 @@
             this.setTranslate($('.lg-prev-slide'), -this.$slide.eq(this.index).width() + distanceX, 0);
             this.setTranslate($('.lg-next-slide'), this.$slide.eq(this.index).width() + distanceX, 0);
         } else if(this.swipeDirection === 'vertical') {
-
             this.$outer.addClass('lg-dragging');
 
             var opacity = 1-(Math.abs(distanceY)/$(window).height());
@@ -1254,7 +1258,7 @@
 
     };
 
-    Plugin.prototype.touchEnd = function(endCoords, startCoords) {
+    Plugin.prototype.touchEnd = function(endCoords, startCoords, e) {
         var _this = this;
         var distance;
 
@@ -1320,7 +1324,8 @@
         if (_this.s.enableSwipe && _this.isTouch && _this.doCss()) {
 
             _this.$slide.on('touchstart.lg', function(e) {
-                if (!_this.$outer.hasClass('lg-zoomed') && !_this.lgBusy) {
+                if (!_this.$outer.hasClass('lg-zoomed') && !_this.lgBusy && e.originalEvent.targetTouches.length === 1) {
+                    _this.touchAction = 'swipe';
                     e.preventDefault();
                     _this.manageSwipeClass();
                     startCoords = {
@@ -1331,25 +1336,27 @@
             });
 
             _this.$slide.on('touchmove.lg', function(e) {
-                if (!_this.$outer.hasClass('lg-zoomed')) {
+                if (_this.touchAction === 'swipe' && e.originalEvent.targetTouches.length === 1 && _this.touchAction ==='swipe') {
+                    //console.log('calling swipe',_this.touchAction)
                     e.preventDefault();
                     endCoords = {
                         pageX: e.originalEvent.targetTouches[0].pageX,
                         pageY: e.originalEvent.targetTouches[0].pageY
                     }
-                    _this.touchMove(startCoords, endCoords);
+                    _this.touchMove(startCoords, endCoords, e);
                     isMoved = true;
                 }
             });
 
-            _this.$slide.on('touchend.lg', function() {
-                if (!_this.$outer.hasClass('lg-zoomed')) {
+            _this.$slide.on('touchend.lg', function(e) {
+                if (_this.touchAction === 'swipe') {
                     if (isMoved) {
                         isMoved = false;
-                        _this.touchEnd(endCoords, startCoords);
+                        _this.touchEnd(endCoords, startCoords, e);
                     } else {
                         _this.$el.trigger('onSlideClick.lg');
                     }
+                    _this.touchAction = '';
                 }
             });
         }
@@ -1507,7 +1514,10 @@
         }
 
         
-        var transform = this.getTransform(_this.$items.eq(_this.index));
+        var transform;
+        if(!_this.s.dynamic) {
+            transform = this.getTransform(_this.$items.eq(_this.index));
+        }
         if (_this.s.zoomFromImage && transform) {
             _this.$outer.addClass('lg-closing');
             _this.$slide.eq(_this.index).css('transition-duration', this.s.startAnimationDuration + 'ms').css('transform', transform);
