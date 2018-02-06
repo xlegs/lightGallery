@@ -49,6 +49,16 @@
             }
         }
     }
+    
+    // Remove transition while dragging
+    &.lg-css3.lg-dragging-vertical {
+        .lg-item {
+            &.lg-current {
+                @include transition-duration(0s !important);
+                opacity: 1;
+            }
+        }
+    }
 
     // Set cursor grab while dragging
     &.lg-grab {

@@ -3,7 +3,7 @@
 
     var defaults = {
 
-        mode: 'lg-fade',
+        mode: 'lg-slide',
 
         // Ex : 'ease'
         cssEasing: 'ease',
@@ -1247,7 +1247,7 @@
             this.setTranslate($('.lg-prev-slide'), -this.$slide.eq(this.index).width() + distanceX, 0);
             this.setTranslate($('.lg-next-slide'), this.$slide.eq(this.index).width() + distanceX, 0);
         } else if(this.swipeDirection === 'vertical') {
-            this.$outer.addClass('lg-dragging');
+            this.$outer.addClass('lg-dragging-vertical');
 
             var opacity = 1-(Math.abs(distanceY)/$(window).height());
             $('.lg-backdrop').css('opacity', opacity);
@@ -1271,7 +1271,7 @@
 
         // set transition duration
         setTimeout(function() {
-            _this.$outer.removeClass('lg-dragging');
+            _this.$outer.removeClass('lg-dragging lg-dragging-vertical');
 
             var triggerClick = true;
 
