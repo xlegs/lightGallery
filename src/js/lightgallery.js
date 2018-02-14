@@ -24,7 +24,7 @@
          * Setting startClass will be empty if zoomFromImage is true to avoid css conflicts.
          * 
          */
-        zoomFromImage: false,
+        zoomFromImage: true,
 
         // Set 0, if u don't want to hide the controls 
         hideBarsDelay: 3000,
@@ -1321,7 +1321,7 @@
         var endCoords = {};
         var isMoved = false;
 
-        if (_this.s.enableSwipe && _this.isTouch && _this.doCss()) {
+        if (_this.s.enableSwipe && _this.doCss()) {
 
             _this.$slide.on('touchstart.lg', function(e) {
                 if (!_this.$outer.hasClass('lg-zoomed') && !_this.lgBusy && e.originalEvent.targetTouches.length === 1) {
@@ -1369,33 +1369,30 @@
         var endCoords = {};
         var isDraging = false;
         var isMoved = false;
-        if (_this.s.enableDrag && !_this.isTouch && _this.doCss()) {
-            _this.$slide.on('mousedown.lg', function(e) {
-                // execute only on .lg-object
-                if (!_this.$outer.hasClass('lg-zoomed')) {
-                    if ($(e.target).hasClass('lg-object') || $(e.target).hasClass('lg-video-play')) {
-                        e.preventDefault();
+        if (_this.s.enableDrag && _this.doCss()) {
+            _this.$outer.on('mousedown.lg', function(e) {
+                if (!_this.$outer.hasClass('lg-zoomed') && !_this.lgBusy && !$(e.target).text()) {
+                    e.preventDefault();
 
-                        if (!_this.lgBusy) {
-                            _this.manageSwipeClass();
-                            startCoords = {
-                                pageX: e.pageX,
-                                pageY: e.pageY
-                            }
-                            isDraging = true;
-
-                            // ** Fix for webkit cursor issue https://code.google.com/p/chromium/issues/detail?id=26723
-                            _this.$outer.scrollLeft += 1;
-                            _this.$outer.scrollLeft -= 1;
-
-                            // *
-
-                            _this.$outer.removeClass('lg-grab').addClass('lg-grabbing');
-
-                            _this.$el.trigger('onDragstart.lg');
+                    if (!_this.lgBusy) {
+                        _this.manageSwipeClass();
+                        startCoords = {
+                            pageX: e.pageX,
+                            pageY: e.pageY
                         }
+                        isDraging = true;
 
+                        // ** Fix for webkit cursor issue https://code.google.com/p/chromium/issues/detail?id=26723
+                        _this.$outer.scrollLeft += 1;
+                        _this.$outer.scrollLeft -= 1;
+
+                        // *
+
+                        _this.$outer.removeClass('lg-grab').addClass('lg-grabbing');
+
+                        _this.$el.trigger('onDragstart.lg');
                     }
+
                 }
             });
 
@@ -1488,6 +1485,10 @@
                     mousedown = false;
                 }
 
+            });
+
+            _this.$outer.on('mousemove.lg', function() {
+                mousedown = false;
             });
 
             _this.$outer.on('mouseup.lg', function(e) {
